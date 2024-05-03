@@ -3,6 +3,7 @@ import psycopg2
 import logging
 from dotenv import load_dotenv
 import os
+import random
 
 load_dotenv()
 
@@ -102,8 +103,65 @@ def create_user():
         cursor.close()
         conn.close()
 
-        return jsonify({'message': 'Usuário criado com sucesso!'}), 201
+        return jsonify({'message': 'Usuário criado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Rota gerar o código de confirmação
+@bp.route('/gen_code', methods=['POST'])
+def gen_code():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
 
+    try:
+        data = request.get_json()
+        email = data.get('email')
+
+        if not email:
+            return jsonify({'error': 'Email é obrigatório!'}), 400
+
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        existing_user = cursor.fetchone()
+
+        if not existing_user:
+            return jsonify({'error': 'Não existe um usuário com esse e-mail!'}), 409
+
+        code = random.randint(100000, 999999)
+        cursor.execute("UPDATE users SET confirmation_code = %s WHERE email = %s", (code, email))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Código gerado com sucesso!'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Rota verificar o código de confirmação
+@bp.route('/check_code', methods=['POST'])
+def check_code():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        code = data.get('confirmation_code')
+
+        if not code:
+            return jsonify({'error': 'Código é obrigatório!'}), 400
+
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = %s AND confirmation_code = %s", (email,code))
+        existing_code = cursor.fetchone()
+
+        if not existing_code:
+            return jsonify({'error': 'Código incorreto!'}), 409
+
+        return jsonify({'message':  'Código verificado com sucesso!'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
