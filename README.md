@@ -15,8 +15,6 @@ code .env
 
 > Obs: Os dados do .env serão disponibilizados aos colaboradores do projeto.
 
-<br>
-
 ### Run:
 
 ```
