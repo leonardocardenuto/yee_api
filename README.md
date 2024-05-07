@@ -14,3 +14,12 @@ code .env
 <br>
 
 > Obs: Os dados do .env serão disponibilizados aos colaboradores do projeto.
+
+<br>
+
+### Run:
+
+```
+python
+```
+<br>
