@@ -1,27 +1,31 @@
 name: YeeFlow
-
 on:
   push:
     branches:
       - main
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout do repositório
+      - name: Checkout do repositorio
         uses: actions/checkout@v4
-
+      
+      - name: Verificar chaves SSH
+        run: |
+          echo "$SSH_PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          ssh-keygen -y -f private_key.pem
+      
       - name: Deploy para o servidor
-        uses: easingthemes/ssh-deploy@v2.0.0
-        with:
-          args: "-rltgoDzvO --delete"
-          local_path: "."
-          server_ip: ${{ secrets.REMOTE_HOST }}
-          server_port: ${{ secrets.REMOTE_PORT }}
-          server_user: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.REMOTE_SSH_KEY }}
-
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{secrets.REMOTE_SSH_KEY}}
+          ARGS: "-o StrictHostKeyChecking=no -rltgoDzvO --delete"
+          SOURCE: "/."
+          REMOTE_HOST: ${{secrets.REMOTE_HOST}}
+          REMOTE_USER: ${{secrets.REMOTE_USER}}
+          REMOTE_PORT: ${{secrets.REMOTE_PORT}}
+          TARGET: ${{secrets.REMOTE_TARGET}}
+      
       - name: Setup App
         run: sudo systemctl restart yee_api
