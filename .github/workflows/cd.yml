@@ -9,13 +9,6 @@ jobs:
     steps:
       - name: Checkout do repositorio
         uses: actions/checkout@v4
-      
-      - name: Verificar chaves SSH
-        run: |
-          echo "$SSH_PRIVATE_KEY" > private_key.pem
-          chmod 600 private_key.pem
-          ssh-keygen -y -f private_key.pem
-      
       - name: Deploy para o servidor
         uses: easingthemes/ssh-deploy@main
         env:
