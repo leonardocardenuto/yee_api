@@ -1,23 +1,27 @@
 name: YeeFlow
+
 on:
   push:
     branches:
       - main
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout do repositorio
+      - name: Checkout do repositório
         uses: actions/checkout@v4
+
       - name: Deploy para o servidor
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{secrets.REMOTE_SSH_KEY}}
-          ARGS: "-o StrictHostKeyChecking=no -rltgoDzvO --delete"
-          SOURCE: "/."
-          REMOTE_HOST: ${{secrets.REMOTE_HOST}}
-          REMOTE_USER: ${{secrets.REMOTE_USER}}
-          REMOTE_PORT: ${{secrets.REMOTE_PORT}}
-          TARGET: ${{secrets.REMOTE_TARGET}}
+        uses: easingthemes/ssh-deploy@v2.0.0
+        with:
+          args: "-rltgoDzvO --delete"
+          local_path: "."
+          server_ip: ${{ secrets.REMOTE_HOST }}
+          server_port: ${{ secrets.REMOTE_PORT }}
+          server_user: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
+
       - name: Setup App
         run: sudo systemctl restart yee_api
