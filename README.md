@@ -18,6 +18,6 @@ code .env
 ### Run:
 
 ```
-python
+python3 wsgi.py
 ```
 <br>
