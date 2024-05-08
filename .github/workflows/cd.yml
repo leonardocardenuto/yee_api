@@ -26,6 +26,6 @@ jobs:
           
       - name: Setup App
         run: |
-          cd /home/${{secrets.REMOTE_USER}}/yee_app/
+          cd /${{secrets.REMOTE_USER}}/yee_app/
           sudo systemctl restart yee_api
 
