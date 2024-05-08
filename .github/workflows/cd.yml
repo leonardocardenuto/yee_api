@@ -1,15 +1,19 @@
 name: YeeFlow
+
 on:
   push:
     branches:
       - main
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps: 
-      - name: Checkout do repositorio
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Deploy para o servidor
+
+      - name: Deploy to server
         uses: easingthemes/ssh-deploy@main
         env:
           SSH_PRIVATE_KEY: ${{secrets.REMOTE_SSH_KEY}}
@@ -19,5 +23,8 @@ jobs:
           REMOTE_USER: ${{secrets.REMOTE_USER}}
           REMOTE_PORT: ${{secrets.REMOTE_PORT}}
           TARGET: ${{secrets.REMOTE_TARGET}}
+
       - name: Setup App
-        run: cd / && sudo systemctl restart yee_api
+        run: |
+          cd ${{secrets.REMOTE_TARGET}}
+          sudo systemctl restart yee_api
