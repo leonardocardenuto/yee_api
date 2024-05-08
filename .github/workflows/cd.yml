@@ -27,6 +27,5 @@ jobs:
       - name: Setup App
         run: |
           cd .
+          sudo systemctl list-units --type=service --state=running
           sudo systemctl restart yee_api
-          cd /etc
-          ls -la
