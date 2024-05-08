@@ -26,5 +26,5 @@ jobs:
           
       - name: Setup App
         run: |
-          cd /
-          ls -la
+          cd /etc/systemd/system
+          sudo systemctl restart yee_api
