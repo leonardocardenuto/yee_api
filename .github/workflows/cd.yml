@@ -9,6 +9,8 @@ jobs:
     steps:
       - name: Checkout do repositorio
         uses: actions/checkout@v4
+      - name: Verificar chave SSH
+        run: ssh ${{secrets.REMOTE_USER}}@${{secrets.REMOTE_HOST}} "cat ~/.ssh/authorized_keys"
       - name: Deploy para o servidor
         uses: easingthemes/ssh-deploy@main
         env:
