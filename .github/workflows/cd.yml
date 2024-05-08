@@ -28,5 +28,5 @@ jobs:
         run: |
           cd .
           sudo systemctl restart yee_api
-          cd /
+          cd /etc
           ls -la
