@@ -26,5 +26,5 @@ jobs:
 
       - name: Setup App
         run: |
-          cd ${{secrets.REMOTE_TARGET}}
+          pwd
           sudo systemctl restart yee_api
