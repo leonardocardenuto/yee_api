@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 # NeonDB URI
 uri = os.getenv('NEONDB')
 
+api_key_gemini= os.getenv('API_KEY_GEM')
+
 # Função para conectar ao banco de dados
 def connect_to_database():
     try:
@@ -292,7 +294,7 @@ def get_text():
         image_data = base64.b64decode(image_data)
         decoded_image = Image.open(BytesIO(image_data))
         decoded_image.save("./images/decoded_image.jpg")
-        genai.configure(api_key="AIzaSyAjGDkGFRp08gUmgb6sKcAsiTHroYFPtmM")
+        genai.configure(api_key=api_key_gemini)
 
         img = PIL.Image.open('./images/decoded_image.jpg')
 
