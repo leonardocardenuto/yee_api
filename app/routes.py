@@ -4,6 +4,11 @@ import logging
 from dotenv import load_dotenv
 import os
 import random
+import mailtrap as mt
+import smtplib
+import ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 load_dotenv()
 
@@ -135,6 +140,45 @@ def gen_code():
         cursor.close()
         conn.close()
 
+        port = 587
+        smtp_server = "smtp.office365.com"
+        sender_email = "no-reply-appye@hotmail.com"
+        password = "yeeapp123"
+        receiver_email = email
+
+        message = MIMEMultipart()
+        message["From"] = sender_email
+        message["To"] = receiver_email
+        message["Subject"] = "Redefinição de senha"
+
+        html = f"""
+        <html>
+        <body>
+            <p>Hi,</p>
+            <p>We just need to verify your email address before you can access Ye app.</p>
+            <p>Verify your email address <strong>{code}</strong></p>
+            <p>Thanks! – The Ye team</p>
+        </body>
+        </html>
+        """
+
+        part1 = MIMEText(html, "html")
+
+        message.attach(part1)
+
+        context = ssl.create_default_context()
+        try:
+            server = smtplib.SMTP(smtp_server, port)
+            server.ehlo()
+            server.starttls(context=context)
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+            print("Email sent!")
+        except Exception as e:
+            print(f"Failed to send email. Error: {e}")
+        finally:
+            server.quit()
+        
         return jsonify({'message': 'Código gerado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
