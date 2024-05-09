@@ -6,8 +6,10 @@ import os
 import random
 import smtplib
 import ssl
+import sys
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
 
 load_dotenv()
 
@@ -93,6 +95,52 @@ def create_user():
 
         if password != confirm_password:
             return jsonify({'error': 'As senhas não são iguais!'}), 400
+        
+        #Enviar email de boas vindas
+        port = 587
+        smtp_server = "smtp.office365.com"
+        sender_email = "no-reply-appye@hotmail.com"
+        password = "yeeapp123"
+        receiver_email = email
+
+        message = MIMEMultipart()
+        message["From"] = sender_email
+        message["To"] = receiver_email
+        message["Subject"] = "Boas vindas!"
+
+        html = f"""
+        <html>
+        <body>
+            <p>Hello,</p>
+            <p>Thanks for signing up with us to use Ye - gestao de saude.</p>
+            <p>If you ever have questions, run into problems, consider an upgrade or anything at all, don’t hesitate to reach out to us via email [ADDRESS] or you can connect with us directly using the contact information below.</p>
+            <p>Looking forward to hearing from you soon!</p>
+            <p>Regards,</p>
+        <p>Equipe Ye</p>
+        </body>
+        </html>
+        """
+
+        part1 = MIMEText(html, "html")
+
+        message.attach(part1)
+
+        context = ssl.create_default_context()
+        try:
+            server = smtplib.SMTP(smtp_server, port)
+            server.ehlo()
+            server.starttls(context=context)
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+            print("Email sent!")
+        except smtplib.SMTPException as e:
+            if "501" in str(e):
+                return jsonify({'error': 'Endereco de email nao encontrado'})
+            else:
+                return jsonify({'error': 'Falha ao enviar email'})
+        finally:
+            server.quit()
+
 
         conn = connect_to_database()
         cursor = conn.cursor()
