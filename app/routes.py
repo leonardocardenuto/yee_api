@@ -4,6 +4,11 @@ import logging
 from dotenv import load_dotenv
 import os
 import random
+import google.generativeai as genai
+import PIL.Image
+import base64
+from PIL import Image
+from io import BytesIO
 
 load_dotenv()
 
@@ -165,3 +170,76 @@ def check_code():
         return jsonify({'message':  'Código verificado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+#================================================
+#
+#   ATENÇÃO ESSA ROTA SÓ FUNCIONA EM LOCALHOST!
+#
+#================================================
+
+# Rota ler imagem
+@bp.route('/get_text', methods=['POST'])
+def get_text():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        image_data = data.get('image_b64')
+        
+        if not email:
+            return jsonify({'error': 'Email é obrigatório!'}), 400
+
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        email = cursor.fetchone()
+
+        if not email:
+            return jsonify({'error': 'Permissão negada!!'}), 400
+        
+        if not image_data:
+            return jsonify({'error': 'A imagem é obrigatória!'}), 400
+
+        image_data = base64.b64decode(image_data)
+        decoded_image = Image.open(BytesIO(image_data))
+        decoded_image.save("./images/decoded_image.jpg")
+        genai.configure(api_key="AIzaSyAjGDkGFRp08gUmgb6sKcAsiTHroYFPtmM")
+
+        img = PIL.Image.open('./images/decoded_image.jpg')
+
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_DANGEROUS",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE",
+            },
+        ]
+
+        model = genai.GenerativeModel(
+            model_name="models/gemini-1.5-pro-latest",
+            generation_config={
+                "temperature":0,
+                "max_output_tokens":1000
+                },
+            safety_settings=safety_settings
+            )
+        
+        response = model.generate_content(["Show the entire text displayed on the image.", img])
+        return jsonify({'message':  response.text}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
