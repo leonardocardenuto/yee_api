@@ -4,7 +4,6 @@ import logging
 from dotenv import load_dotenv
 import os
 import random
-import mailtrap as mt
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
