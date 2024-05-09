@@ -6,7 +6,6 @@ import os
 import random
 import smtplib
 import ssl
-import sys
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
