@@ -4,6 +4,11 @@ import logging
 from dotenv import load_dotenv
 import os
 import random
+import google.generativeai as genai
+import PIL.Image
+import base64
+from PIL import Image
+from io import BytesIO
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
