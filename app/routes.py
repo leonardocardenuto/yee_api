@@ -49,7 +49,7 @@ def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
         tipo = 'pharmacy'
     else:
         tipo = 'None'
-    if tipo != 'None':
+    if tipo != 'None' and type(response) != str:
         base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
         params = {
             'key': api_key,
@@ -61,7 +61,7 @@ def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
         if response.status_code == 200:
             data = response.json()
             return data
-    print('Failed to retrieve data:', response.status_code)
+    print('Failed to retrieve data:', 500)
     return []
     
 # Rota para checar conexão
