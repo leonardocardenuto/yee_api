@@ -42,14 +42,13 @@ def connect_to_database():
 def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
     logging.debug(type)
     tipo = ''
-    response = ''
     if 'hospital' in type:
         tipo = 'hospital'
     elif 'pharmacy' in type:
         tipo = 'pharmacy'
     else:
         tipo = 'None'
-    if tipo != 'None' and type(response) != str:
+    if tipo != 'None':
         base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
         params = {
             'key': api_key,
@@ -62,7 +61,7 @@ def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
             data = response.json()
             return data
     print('Failed to retrieve data:', 500)
-    return []
+    return False
     
 # Rota para checar conexão
 @bp.route('/check_connection', methods=['GET'])
@@ -423,21 +422,23 @@ def ask_ai():
         logging.debug(response.text)
         type = response.text
         results = search_nearby_hospitals(type ,api_key, latitude, longitude)
-        result_string = ""
-        for item in results['results']:
-            name = item['name']
-            address = item['vicinity']
-            rating = item.get('rating', 'N/A')
-            type = ', '.join(item['types'])
-            result_string += f"\nName: {name}"
-            result_string += f"\nAddress: {address}"
-            result_string += f"\nRating: {rating}"
-            result_string += f"Types: {type}"
-            result_string += f"\nLatitude: {latitude}, Longitude: {longitude}"
-
-        return jsonify({'message':  result_string}), 200
+        if results:
+            result_string = ""
+            for item in results['results']:
+                name = item['name']
+                address = item['vicinity']
+                rating = item.get('rating', 'N/A')
+                type = ', '.join(item['types'])
+                result_string += f"\nName: {name}"
+                result_string += f"\nAddress: {address}"
+                result_string += f"\nRating: {rating}"
+                result_string += f"Types: {type}"
+                result_string += f"\nLatitude: {latitude}, Longitude: {longitude}"
+        
+            return jsonify({'message':  result_string}), 200
+        else:
+            return jsonify({'message':  "Um erro ao vasculhar locais ocorreu!"}), 500
     except Exception as e:
         logging.debug(e)
         return jsonify({'error': str(e)}), 500
-
 
