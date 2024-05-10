@@ -42,6 +42,7 @@ def connect_to_database():
 def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
     logging.debug(type)
     tipo = ''
+    response = ''
     if 'hospital' in type:
         tipo = 'hospital'
     elif 'pharmacy' in type:
