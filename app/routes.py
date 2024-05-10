@@ -41,12 +41,15 @@ def connect_to_database():
 
 def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
     logging.debug(type)
+    tipo = ''
+    if 'hospital' in type:
+        tipo = 'hospital'
     base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
     params = {
         'key': api_key,
         'location': f'{latitude},{longitude}',
         'radius': radius,
-        'type': 'hospital'
+        'type': tipo
     }
     response = requests.get(base_url, params=params)
     if response.status_code == 200:
