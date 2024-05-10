@@ -44,20 +44,24 @@ def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
     tipo = ''
     if 'hospital' in type:
         tipo = 'hospital'
-    base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-    params = {
-        'key': api_key,
-        'location': f'{latitude},{longitude}',
-        'radius': radius,
-        'type': tipo
-    }
-    response = requests.get(base_url, params=params)
-    if response.status_code == 200:
-        data = response.json()
-        return data
+    elif 'pharmacy' in type:
+        tipo = 'pharmacy'
     else:
-        print('Failed to retrieve data:', response.status_code)
-        return []
+        tipo = 'None'
+    if tipo != 'None':
+        base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+        params = {
+            'key': api_key,
+            'location': f'{latitude},{longitude}',
+            'radius': radius,
+            'type': tipo
+        }
+        response = requests.get(base_url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            return data
+    print('Failed to retrieve data:', response.status_code)
+    return []
     
 # Rota para checar conexão
 @bp.route('/check_connection', methods=['GET'])
