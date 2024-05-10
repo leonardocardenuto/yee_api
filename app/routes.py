@@ -3,6 +3,7 @@ import psycopg2
 import logging
 from dotenv import load_dotenv
 import os
+import requests
 import random
 import google.generativeai as genai
 import PIL.Image
@@ -38,6 +39,23 @@ def connect_to_database():
         logger.error("Failed to connect to database: %s", e)
         raise
 
+def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
+    logging.debug(type)
+    base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+    params = {
+        'key': api_key,
+        'location': f'{latitude},{longitude}',
+        'radius': radius,
+        'type': 'hospital'
+    }
+    response = requests.get(base_url, params=params)
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        print('Failed to retrieve data:', response.status_code)
+        return []
+    
 # Rota para checar conexão
 @bp.route('/check_connection', methods=['GET'])
 def check_connection():
@@ -334,4 +352,84 @@ def get_text():
         return jsonify({'message':  response.text}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+# Rota check mais próxima
+@bp.route('/ask_ai', methods=['POST'])
+def ask_ai():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        question = data.get('question')
+        
+        if not email:
+            return jsonify({'error': 'Email é obrigatório!'}), 400
+
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        email = cursor.fetchone()
+
+        if not email:
+            return jsonify({'error': 'Permissão negada!!'}), 400
+        
+        if not question:
+            return jsonify({'error': 'A pergunta é obrigatória!'}), 400
+
+        genai.configure(api_key=api_key_gemini)
+
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_DANGEROUS",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE",
+            },
+        ]
+
+        model = genai.GenerativeModel(
+            model_name="models/gemini-1.5-pro-latest",
+            generation_config={
+                "temperature":0,
+                "max_output_tokens":900
+                },
+            safety_settings=safety_settings
+            )
+        api_key = 'AIzaSyBmhJ8FVHqiluHu4iNog2ooc-hNaOpHul0'
+        latitude = -23.647778
+        longitude = -46.573333
+        response = model.generate_content([f"Com base na necessidade do usuário : {question}; Peço que identifique o tipo de localidade procurada dentre os da lista abaixo:'hospital','pharmacy','None'. Informe somente o tipo escolhido."])
+        logging.debug(response.text)
+        type = response.text
+        results = search_nearby_hospitals(type ,api_key, latitude, longitude)
+        result_string = ""
+        for item in results['results']:
+            name = item['name']
+            address = item['vicinity']
+            rating = item.get('rating', 'N/A')
+            type = ', '.join(item['types'])
+            result_string += f"\nName: {name}"
+            result_string += f"\nAddress: {address}"
+            result_string += f"\nRating: {rating}"
+            result_string += f"Types: {type}"
+            result_string += f"\nLatitude: {latitude}, Longitude: {longitude}"
+
+        return jsonify({'message':  result_string}), 200
+    except Exception as e:
+        logging.debug(e)
+        return jsonify({'error': str(e)}), 500
+
 
