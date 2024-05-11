@@ -182,7 +182,7 @@ def create_user():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Rota para criar usuário
+# Rota para alterar a senha
 @bp.route('/change_pass', methods=['POST'])
 def change_pass():
     logger.info("Received request: %s %s", request.method, request.url)
@@ -311,8 +311,6 @@ def check_code():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-    
-
 #================================================
 #
 #   ATENÇÃO ESSA ROTA SÓ FUNCIONA EM LOCALHOST!
