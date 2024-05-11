@@ -27,7 +27,15 @@ logger = logging.getLogger(__name__)
 # NeonDB URI
 uri = os.getenv('NEONDB')
 
+# Api Keys
 api_key_gemini= os.getenv('API_KEY_GEM')
+api_key_maps = os.getenv('API_KEY_MAPS')
+
+#Mail Config
+smtp_server="smtp.office365.com"
+sender_email = "no-reply-appye@hotmail.com"
+password = "yeeapp123"
+port=587
 
 # Função para conectar ao banco de dados
 def connect_to_database():
@@ -40,28 +48,20 @@ def connect_to_database():
         raise
 
 def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
-    logging.debug(type)
-    tipo = ''
-    if 'hospital' in type:
-        tipo = 'hospital'
-    elif 'pharmacy' in type:
-        tipo = 'pharmacy'
+    base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+    params = {
+        'key': api_key,
+        'location': f'{latitude},{longitude}',
+        'radius': radius,
+        'type': type
+    }
+    response = requests.get(base_url, params=params)
+    if response.status_code == 200:
+        data = response.json()
+        return data
     else:
-        tipo = 'None'
-    if tipo != 'None':
-        base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-        params = {
-            'key': api_key,
-            'location': f'{latitude},{longitude}',
-            'radius': radius,
-            'type': tipo
-        }
-        response = requests.get(base_url, params=params)
-        if response.status_code == 200:
-            data = response.json()
-            return data
-    print('Failed to retrieve data:', 500)
-    return False
+        print('Failed to retrieve data:', 500)
+        return False
     
 # Rota para checar conexão
 @bp.route('/check_connection', methods=['GET'])
@@ -128,12 +128,7 @@ def create_user():
             return jsonify({'error': 'As senhas não são iguais!'}), 400
         
         #Enviar email de boas vindas
-        port = 587
-        smtp_server = "smtp.office365.com"
-        sender_email = "no-reply-appye@hotmail.com"
-        password = "yeeapp123"
         receiver_email = email
-
         message = MIMEMultipart()
         message["From"] = sender_email
         message["To"] = receiver_email
@@ -190,6 +185,36 @@ def create_user():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Rota para criar usuário
+@bp.route('/change_pass', methods=['POST'])
+def create_user():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+
+        if not email or not password or not confirm_password:
+            return jsonify({'error': 'Email, senha, and confirmar senha são obrigatórios!'}), 400
+
+        if password != confirm_password:
+            return jsonify({'error': 'As senhas não são iguais!'}), 400
+        
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET password = %s WHERE email = %s", (password,email))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Senha redefinida com sucesso!'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # Rota gerar o código de confirmação
 @bp.route('/gen_code', methods=['POST'])
 def gen_code():
@@ -218,10 +243,6 @@ def gen_code():
         cursor.close()
         conn.close()
 
-        port = 587
-        smtp_server = "smtp.office365.com"
-        sender_email = "no-reply-appye@hotmail.com"
-        password = "yeeapp123"
         receiver_email = email
 
         message = MIMEMultipart()
@@ -415,13 +436,13 @@ def ask_ai():
                 },
             safety_settings=safety_settings
             )
-        api_key = 'AIzaSyBmhJ8FVHqiluHu4iNog2ooc-hNaOpHul0'
         latitude = -23.647778
         longitude = -46.573333
         response = model.generate_content([f"Com base na necessidade do usuário : {question}; Peço que identifique o tipo de localidade procurada dentre os da lista abaixo:'hospital','pharmacy','None'. Informe somente o tipo escolhido."])
         logging.debug(response.text)
         type = response.text
-        results = search_nearby_hospitals(type ,api_key, latitude, longitude)
+        type = type.strip()
+        results = search_nearby_hospitals(type ,api_key_maps, latitude, longitude)
         if results:
             result_string = ""
             for item in results['results']:

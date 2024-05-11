@@ -1,4 +1,8 @@
 import requests
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 def search_nearby_hospitals(api_key, latitude, longitude, radius=10000):
     base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
@@ -16,7 +20,7 @@ def search_nearby_hospitals(api_key, latitude, longitude, radius=10000):
         print('Failed to retrieve data:', response.status_code)
         return []
 
-api_key = 'AIzaSyBmhJ8FVHqiluHu4iNog2ooc-hNaOpHul0'
+api_key = os.getenv('API_KEY_MAPS')
 latitude = -23.647778
 longitude = -46.573333
 results = search_nearby_hospitals(api_key, latitude, longitude)
