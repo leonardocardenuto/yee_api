@@ -187,7 +187,7 @@ def create_user():
 
 # Rota para criar usuário
 @bp.route('/change_pass', methods=['POST'])
-def create_user():
+def change_pass():
     logger.info("Received request: %s %s", request.method, request.url)
     logger.debug("Request headers: %s", request.headers)
     logger.debug("Request data: %s", request.get_data())
