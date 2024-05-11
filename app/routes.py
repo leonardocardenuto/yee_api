@@ -302,9 +302,16 @@ def check_code():
         if not existing_code:
             return jsonify({'error': 'Código incorreto!'}), 409
 
+
+        cursor.execute("UPDATE users SET confirmation_code = null WHERE email = %s AND confirmation_code = %s", (email,code))
+        conn.commit()
+        cursor.close()
+        conn.close()
         return jsonify({'message':  'Código verificado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+    
 
 #================================================
 #
