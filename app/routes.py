@@ -34,7 +34,7 @@ api_key_maps = os.getenv('API_KEY_MAPS')
 #Mail Config
 smtp_server="smtp.office365.com"
 sender_email = "no-reply-appye@hotmail.com"
-password = "yeeapp123"
+sender_password = "yeeapp123"
 port=587
 
 # Função para conectar ao banco de dados
@@ -127,12 +127,21 @@ def create_user():
         if password != confirm_password:
             return jsonify({'error': 'As senhas não são iguais!'}), 400
         
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            return jsonify({'error': 'Um usuário com esse e-mail já existe!'}), 409
+        
         #Enviar email de boas vindas
         receiver_email = email
+
         message = MIMEMultipart()
         message["From"] = sender_email
         message["To"] = receiver_email
-        message["Subject"] = "Boas vindas!"
+        message["Subject"] = "Redefinição de senha"
 
         html = f"""
         <html>
@@ -156,25 +165,13 @@ def create_user():
             server = smtplib.SMTP(smtp_server, port)
             server.ehlo()
             server.starttls(context=context)
-            server.login(sender_email, password)
+            server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, message.as_string())
             print("Email sent!")
-        except smtplib.SMTPException as e:
-            if "501" in str(e):
-                return jsonify({'error': 'Endereco de email nao encontrado'})
-            else:
-                return jsonify({'error': 'Falha ao enviar email'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
         finally:
             server.quit()
-
-
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        existing_user = cursor.fetchone()
-
-        if existing_user:
-            return jsonify({'error': 'Um usuário com esse e-mail já existe!'}), 409
 
         cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
         conn.commit()
@@ -270,7 +267,7 @@ def gen_code():
             server = smtplib.SMTP(smtp_server, port)
             server.ehlo()
             server.starttls(context=context)
-            server.login(sender_email, password)
+            server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, message.as_string())
             print("Email sent!")
         except Exception as e:
