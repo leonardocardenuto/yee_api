@@ -4,6 +4,7 @@ import os
 import time
 import psycopg2
 
+server = os.getenv('IP_ADRESS')
 load_dotenv()
 
 registration_response = None
@@ -15,7 +16,7 @@ standard_mail = os.getenv('SENDER_EMAIL')
 @given('I am a registered user')
 def step_registered_user(context):
     global registration_response
-    url = "http://localhost:3000/create_user"
+    url = f"http://{server}:3000/create_user"
     data = { "email": standard_mail, "password" : "123", "confirm_password" : "123" }
     registration_response = None
     while registration_response is None:
@@ -26,7 +27,7 @@ def step_registered_user(context):
 @when('I enter my correct username and password')
 def step_correct_credentials(context):
     global login_response
-    url = "http://localhost:3000/login"
+    url = f"http://{server}:3000/login"
     data = { "email": standard_mail, "password" : "123" }
     login_response = None
     while login_response is None:
@@ -45,7 +46,7 @@ def step_logged_in_successfully(context):
 @when('I enter an incorrect username or password')
 def step_incorrect_credentials(context):
     global login_response
-    url = "http://localhost:3000/login"
+    url = f"http://{server}:3000/login"
     data = { "email": os.getenv('SENDER_EMAIL'), "password" : "incorrect" }
     login_response = None
     while login_response is None:

@@ -4,6 +4,7 @@ import os
 import time
 import psycopg2
 
+server = os.getenv('IP_ADRESS')
 load_dotenv()
 
 check_response = None
@@ -18,7 +19,7 @@ def step_registered_user(context):
 @when('attempts to connect')
 def step_correct_credentials(context):
     global check_response
-    url = "http://localhost:3000/check_connection"
+    url = f"http://{server}:3000/check_connection"
     check_response = None
     while check_response is None:
         check_response = requests.post(url)
