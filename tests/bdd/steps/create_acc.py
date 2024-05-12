@@ -10,6 +10,7 @@ registration_response = None
 uri = os.getenv('NEONDB')
 conn = psycopg2.connect(uri)
 standard_mail = os.getenv('SENDER_EMAIL')
+server = os.getenv('IP_ADRESS')
 
 @given('I have a valid email')
 def step_registered_user(context):
@@ -18,7 +19,7 @@ def step_registered_user(context):
 @when('I fill the form')
 def step_correct_credentials(context):
     global registration_response
-    url = "http://localhost:3000/create_user"
+    url = f"http://{server}:3000/create_user"
     data = { "email": standard_mail, "password" : "123", "confirm_password" : "123" }
     registration_response = None
     while registration_response is None:
@@ -40,7 +41,7 @@ def step_registered_user(context):
 @when('I fill the form with the invalid email and the rest of info')
 def step_incorrect_credentials(context):
     global registration_response
-    url = "http://localhost:3000/create_user"
+    url = f"http://{server}:3000/create_user"
     data = { "email": standard_mail, "password" : "123", "confirm_password" : "incorrect" }
     registration_response = None
     while registration_response is None:

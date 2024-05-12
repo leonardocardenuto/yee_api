@@ -4,11 +4,12 @@ from dotenv import load_dotenv
 import os
 import psycopg2
 
+server = os.getenv('IP_ADRESS')
 load_dotenv()
 
 class TestUserAuthentication(unittest.TestCase):
     def setUp(self):
-        self.base_url = "http://localhost:3000"
+        self.base_url = f"http://{server}:3000/"
         self.email = os.getenv('SENDER_EMAIL')
         self.password = "123"
         self.uri = os.getenv('NEONDB')
