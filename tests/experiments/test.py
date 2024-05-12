@@ -19,7 +19,7 @@ def send_image_to_server(image_path, url):
     response = requests.post(url, json=data)
     return response
 
-image_path = "./tests/images.jpg"
+image_path = "./tests/experiments/images.jpg"
 url = "http://localhost:3000/get_text"
 response = send_image_to_server(image_path, url)
 
