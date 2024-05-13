@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 import os
 import psycopg2
 
-server = os.getenv('IP_ADRESS')
 load_dotenv()
+server = os.getenv('IP_ADRESS')
 
 class TestUserAuthentication(unittest.TestCase):
     def setUp(self):
