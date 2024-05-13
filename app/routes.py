@@ -240,8 +240,6 @@ def gen_code():
         cursor.close()
         conn.close()
 
-        receiver_email = email
-
         message = MIMEMultipart()
         message["From"] = sender_email
         message["To"] = receiver_email
@@ -271,7 +269,7 @@ def gen_code():
             server.sendmail(sender_email, receiver_email, message.as_string())
             print("Email sent!")
         except Exception as e:
-            print(f"Failed to send email. Error: {e}")
+            return jsonify({'error': str(e)}), 500
         finally:
             server.quit()
         
