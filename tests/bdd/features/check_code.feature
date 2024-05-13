@@ -1,11 +1,11 @@
-Feature: Verify the verification code sent by the user is correct
+Feature: Check Code functionality
 
-Scenario: Code in the db is the same that the user submitted
-    Given I am a registered user and forgot my password
-    When I submmit the verification code sent in my email
-    Then I should be verified
+Scenario: Successful Checking
+    Given a valid code
+    When attempts to check the code
+    Then it should be successfull
 
-Scenario: Code in the db is not the same that the user submitted
-    Given I am a registered user and forgot my password
-    When I submmit the wrong verification code
-    Then I should see an error message
+Scenario: Failed Checking
+    Given a invalid code
+    When attempts to check the wrong code
+    Then it should fail on checking

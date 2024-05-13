@@ -5,10 +5,10 @@ import os
 import psycopg2
 
 load_dotenv()
-server = os.getenv('IP_ADRESS')
 
 class TestUserAuthentication(unittest.TestCase):
     def setUp(self):
+        server = os.getenv('IP_ADRESS')
         self.base_url = f"http://{server}:3000/"
         self.email = os.getenv('SENDER_EMAIL')
         self.password = "123"
