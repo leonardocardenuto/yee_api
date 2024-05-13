@@ -10,7 +10,6 @@ load_dotenv()
 check_response = None
 uri = os.getenv('NEONDB')
 conn = psycopg2.connect(uri)
-standard_mail = os.getenv('SENDER_EMAIL')
 
 @given('a valid database uri')
 def step_registered_user(context):
@@ -22,9 +21,9 @@ def step_correct_credentials(context):
     url = f"http://{server}:3000/check_connection"
     check_response = None
     while check_response is None:
-        check_response = requests.post(url)
+        check_response = requests.get(url)
         time.sleep(1) 
 
 @then('it should connect successfully')
-def step_logged_in_successfully(context):
+def step_conn_successfully(context):
     assert check_response.status_code == 200
