@@ -239,6 +239,8 @@ def gen_code():
         conn.commit()
         cursor.close()
         conn.close()
+        
+        receiver_email = email
 
         message = MIMEMultipart()
         message["From"] = sender_email
