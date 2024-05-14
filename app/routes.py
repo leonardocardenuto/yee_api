@@ -181,37 +181,7 @@ def create_user():
         return jsonify({'message': 'Usuário criado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-# Rota para alterar a senha
-@bp.route('/change_pass', methods=['POST'])
-def change_pass():
-    logger.info("Received request: %s %s", request.method, request.url)
-    logger.debug("Request headers: %s", request.headers)
-    logger.debug("Request data: %s", request.get_data())
-
-    try:
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-        confirm_password = data.get('confirm_password')
-
-        if not email or not password or not confirm_password:
-            return jsonify({'error': 'Email, senha, and confirmar senha são obrigatórios!'}), 400
-
-        if password != confirm_password:
-            return jsonify({'error': 'As senhas não são iguais!'}), 400
-        
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET password = %s WHERE email = %s", (password,email))
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return jsonify({'message': 'Senha redefinida com sucesso!'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
+    
 # Rota gerar o código de confirmação
 @bp.route('/gen_code', methods=['POST'])
 def gen_code():
@@ -278,6 +248,37 @@ def gen_code():
         return jsonify({'message': 'Código gerado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+# Rota para alterar a senha
+@bp.route('/change_pass', methods=['POST'])
+def change_pass():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+
+        if not email or not password or not confirm_password:
+            return jsonify({'error': 'Email, senha, and confirmar senha são obrigatórios!'}), 400
+
+        if password != confirm_password:
+            return jsonify({'error': 'As senhas não são iguais!'}), 400
+        
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET password = %s WHERE email = %s", (password,email))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'message': 'Senha redefinida com sucesso!'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 # Rota verificar o código de confirmação
 @bp.route('/check_code', methods=['POST'])
