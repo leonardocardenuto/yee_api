@@ -1,51 +1,18 @@
 from flask import Blueprint, jsonify, request
-import psycopg2
-import logging
-from dotenv import load_dotenv
-import os
 import requests
 import random
-import google.generativeai as genai
 import PIL.Image
 import base64
 from PIL import Image
 from io import BytesIO
-import smtplib
-import ssl
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import re
+from app.config import logger, api_key_maps
+from app.utils.db import auth, exec_query,commit
+from app.utils.mail import send_mail
+from app.utils.ai import identify_image , ask_gemini
 
-
-load_dotenv()
 
 bp = Blueprint('routes', __name__)
-
-# Configuração do logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-# NeonDB URI
-uri = os.getenv('NEONDB')
-
-# Api Keys
-api_key_gemini= os.getenv('API_KEY_GEM')
-api_key_maps = os.getenv('API_KEY_MAPS')
-
-#Mail Config
-smtp_server="smtp.office365.com"
-sender_email = "no-reply-appye@hotmail.com"
-sender_password = "yeeapp123"
-port=587
-
-# Função para conectar ao banco de dados
-def connect_to_database():
-    try:
-        conn = psycopg2.connect(uri)
-        logger.debug("Connected to database")
-        return conn
-    except Exception as e:
-        logger.error("Failed to connect to database: %s", e)
-        raise
 
 def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
     base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
@@ -63,23 +30,6 @@ def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
         print('Failed to retrieve data:', 500)
         return False
     
-# Rota para checar conexão
-@bp.route('/check_connection', methods=['GET'])
-def check_connection():
-    logger.info("Received request: %s %s", request.method, request.url)
-    logger.debug("Request headers: %s", request.headers)
-    logger.debug("Request data: %s", request.get_data())
-
-    try:
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        cursor.close()
-        conn.close()
-        return jsonify({'message': 'NeonDB connection successful'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 # Rota para logar
 @bp.route('/login', methods=['POST'])
 def login():
@@ -94,13 +44,9 @@ def login():
 
         if not email or not password:
             return jsonify({'error': 'Email, senha, and confirmar senha são obrigatórios!'}), 400
+        
+        user = auth(email,password)
 
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password))
-        user = cursor.fetchone()
-        cursor.close()
-        conn.close()
         if user:
             return jsonify({'message': 'Sucesso!'}), 200
         else:
@@ -127,61 +73,44 @@ def create_user():
         if password != confirm_password:
             return jsonify({'error': 'As senhas não são iguais!'}), 400
         
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        existing_user = cursor.fetchone()
+        existing_user = exec_query("SELECT * FROM users WHERE email = %s", (email,))
+
 
         if existing_user:
             return jsonify({'error': 'Um usuário com esse e-mail já existe!'}), 409
         
-        #Enviar email de boas vindas
-        receiver_email = email
-
-        message = MIMEMultipart()
-        message["From"] = sender_email
-        message["To"] = receiver_email
-        message["Subject"] = "Redefinição de senha"
-
-        html = f"""
-        <html>
-        <body>
-            <p>Hello,</p>
-            <p>Thanks for signing up with us to use Ye - gestao de saude.</p>
-            <p>If you ever have questions, run into problems, consider an upgrade or anything at all, don’t hesitate to reach out to us via email [ADDRESS] or you can connect with us directly using the contact information below.</p>
-            <p>Looking forward to hearing from you soon!</p>
-            <p>Regards,</p>
-        <p>Equipe Ye</p>
-        </body>
-        </html>
-        """
-
-        part1 = MIMEText(html, "html")
-
-        message.attach(part1)
-
-        context = ssl.create_default_context()
-        try:
-            server = smtplib.SMTP(smtp_server, port)
-            server.ehlo()
-            server.starttls(context=context)
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, receiver_email, message.as_string())
-            print("Email sent!")
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-        finally:
-            server.quit()
-
-        cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        send_mail('welcome',email)
+        commit("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
 
         return jsonify({'message': 'Usuário criado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
+
+# Rota para alterar a senha
+@bp.route('/change_pass', methods=['POST'])
+def change_pass():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+
+        if not email or not password or not confirm_password:
+            return jsonify({'error': 'Email, senha, and confirmar senha são obrigatórios!'}), 400
+
+        if password != confirm_password:
+            return jsonify({'error': 'As senhas não são iguais!'}), 400
+        
+        commit("UPDATE users SET password = %s WHERE email = %s", (password,email,))
+
+        return jsonify({'message': 'Senha redefinida com sucesso!'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # Rota gerar o código de confirmação
 @bp.route('/gen_code', methods=['POST'])
 def gen_code():
@@ -196,55 +125,15 @@ def gen_code():
         if not email:
             return jsonify({'error': 'Email é obrigatório!'}), 400
 
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        existing_user = cursor.fetchone()
+        existing_user = exec_query("SELECT * FROM users WHERE email = %s", (email,))
 
         if not existing_user:
             return jsonify({'error': 'Não existe um usuário com esse e-mail!'}), 409
 
         code = random.randint(100000, 999999)
-        cursor.execute("UPDATE users SET confirmation_code = %s WHERE email = %s", (code, email))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        receiver_email = email
+        commit("UPDATE users SET confirmation_code = %s WHERE email = %s", (code, email,))
+        send_mail('verify_code',code)
 
-        message = MIMEMultipart()
-        message["From"] = sender_email
-        message["To"] = receiver_email
-        message["Subject"] = "Redefinição de senha"
-
-        html = f"""
-        <html>
-        <body>
-            <p>Hi,</p>
-            <p>We just need to verify your email address before you can access Ye app.</p>
-            <p>Verify your email address <strong>{code}</strong></p>
-            <p>Thanks! – The Ye team</p>
-        </body>
-        </html>
-        """
-
-        part1 = MIMEText(html, "html")
-
-        message.attach(part1)
-
-        context = ssl.create_default_context()
-        try:
-            server = smtplib.SMTP(smtp_server, port)
-            server.ehlo()
-            server.starttls(context=context)
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, receiver_email, message.as_string())
-            print("Email sent!")
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-        finally:
-            server.quit()
-        
         return jsonify({'message': 'Código gerado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -295,19 +184,13 @@ def check_code():
         if not code:
             return jsonify({'error': 'Código é obrigatório!'}), 400
 
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = %s AND confirmation_code = %s", (email,code))
-        existing_code = cursor.fetchone()
+        existing_code = exec_query("SELECT * FROM users WHERE email = %s AND confirmation_code = %s", (email,code,))
 
         if not existing_code:
             return jsonify({'error': 'Código incorreto!'}), 409
 
+        commit("UPDATE users SET confirmation_code = null WHERE email = %s AND confirmation_code = %s", (email,code,))
 
-        cursor.execute("UPDATE users SET confirmation_code = null WHERE email = %s AND confirmation_code = %s", (email,code))
-        conn.commit()
-        cursor.close()
-        conn.close()
         return jsonify({'message':  'Código verificado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -329,12 +212,9 @@ def get_text():
         if not email:
             return jsonify({'error': 'Email é obrigatório!'}), 400
 
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        email = cursor.fetchone()
+        email_found = exec_query("SELECT * FROM users WHERE email = %s", (email,))
 
-        if not email:
+        if not email_found:
             return jsonify({'error': 'Permissão negada!!'}), 400
         
         if not image_data:
@@ -343,45 +223,33 @@ def get_text():
         image_data = base64.b64decode(image_data)
         decoded_image = Image.open(BytesIO(image_data))
         decoded_image.save("./images/decoded_image.jpg")
-        genai.configure(api_key=api_key_gemini)
 
         img = PIL.Image.open('./images/decoded_image.jpg')
 
-        safety_settings = [
-            {
-                "category": "HARM_CATEGORY_DANGEROUS",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_HARASSMENT",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_HATE_SPEECH",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                "threshold": "BLOCK_NONE",
-            },
-        ]
+        report = identify_image(img)
 
-        model = genai.GenerativeModel(
-            model_name="models/gemini-1.5-pro-latest",
-            generation_config={
-                "temperature":0,
-                "max_output_tokens":1000
-                },
-            safety_settings=safety_settings
-            )
+        def safe_extract_numeric(pattern, string):
+            match = re.search(pattern, string)
+            return float(match.group(1)) if match else None
+
+        def safe_extract_string(pattern, string):
+            match = re.search(pattern, string)
+            return match.group(1) if match else None
+
+        pressao = safe_extract_string(r'Pressão:\s*(\S+)', report)
+        peso = safe_extract_numeric(r'Peso:\s*(\d+(\.\d+)?)', report)
+        altura = safe_extract_numeric(r'Altura:\s*(\d+(\.\d+)?)', report)
+        glicemia = safe_extract_numeric(r'Glicemia:\s*(\d+(\.\d+)?)', report)
+        insert_query = """
+        INSERT INTO medical_exams (pressao, peso, altura, glicemia, user_email)
+        VALUES (%s, %s, %s, %s, %s)
+        """
         
-        response = model.generate_content(["Show the entire text displayed on the image.", img])
-        return jsonify({'message':  response.text}), 200
+        commit(insert_query, (pressao, peso, altura, glicemia, email))
+
+        return jsonify({'message':  report}), 200
     except Exception as e:
+        logger.debug(e)
         return jsonify({'error': str(e)}), 500
     
 # Rota check mais próxima
@@ -395,10 +263,7 @@ def ask_ai():
         if not email:
             return jsonify({'error': 'Email é obrigatório!'}), 400
 
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        email = cursor.fetchone()
+        email = exec_query("SELECT * FROM users WHERE email = %s", (email))
 
         if not email:
             return jsonify({'error': 'Permissão negada!!'}), 400
@@ -406,44 +271,11 @@ def ask_ai():
         if not question:
             return jsonify({'error': 'A pergunta é obrigatória!'}), 400
 
-        genai.configure(api_key=api_key_gemini)
-
-        safety_settings = [
-            {
-                "category": "HARM_CATEGORY_DANGEROUS",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_HARASSMENT",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_HATE_SPEECH",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                "threshold": "BLOCK_NONE",
-            },
-        ]
-
-        model = genai.GenerativeModel(
-            model_name="models/gemini-1.5-pro-latest",
-            generation_config={
-                "temperature":0,
-                "max_output_tokens":900
-                },
-            safety_settings=safety_settings
-            )
         latitude = -23.647778
         longitude = -46.573333
-        response = model.generate_content([f"Com base na necessidade do usuário : {question}; Peço que identifique o tipo de localidade procurada dentre os da lista abaixo:'hospital','pharmacy','None'. Informe somente o tipo escolhido."])
-        logging.debug(response.text)
-        type = response.text
+        response = ask_gemini([f"Com base na necessidade do usuário : {question}; Peço que identifique o tipo de localidade procurada dentre os da lista abaixo:'hospital','pharmacy','None'. Informe somente o tipo escolhido."])
+        logger.debug(response)
+        type = response
         type = type.strip()
         results = search_nearby_hospitals(type ,api_key_maps, latitude, longitude)
         if results:
@@ -463,6 +295,6 @@ def ask_ai():
         else:
             return jsonify({'message':  "Um erro ao vasculhar locais ocorreu!"}), 500
     except Exception as e:
-        logging.debug(e)
+        logger.debug(e)
         return jsonify({'error': str(e)}), 500
 
