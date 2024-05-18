@@ -43,7 +43,7 @@ def auth(email, password):
     """
     Retrieves a user by email and password.
     """
-    query = "SELECT * FROM users WHERE email = %s AND password = %s"
-    params = (email, password)
+    query = "SELECT user_name,avatar FROM users WHERE (user_name = %s OR email = %s) AND password = %s"
+    params = (email, email, password)
     result = exec_query(query, params)
     return result

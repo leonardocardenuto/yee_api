@@ -1,8 +1,8 @@
 import google.generativeai as genai
 from app.config import logger , api_key_gemini
-from app.utils.db import exec_query,commit
 
 genai.configure(api_key=api_key_gemini)
+
 safety_settings = [
     {
         "category": "HARM_CATEGORY_DANGEROUS",

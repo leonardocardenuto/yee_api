@@ -43,12 +43,12 @@ def login():
         password = data.get('password')
 
         if not email or not password:
-            return jsonify({'error': 'Email, senha, and confirmar senha são obrigatórios!'}), 400
+            return jsonify({'error': 'Email/Nome de Usuário, senha, and confirmar senha são obrigatórios!'}), 400
         
         user = auth(email,password)
 
         if user:
-            return jsonify({'message': 'Sucesso!'}), 200
+            return user, 200
         else:
             return jsonify({'error': 'Email ou senha inválidos!'}), 401
     except Exception as e:
@@ -63,27 +63,28 @@ def create_user():
 
     try:
         data = request.get_json()
+        user_name = data.get('user_name')
         email = data.get('email')
         password = data.get('password')
         confirm_password = data.get('confirm_password')
 
-        if not email or not password or not confirm_password:
-            return jsonify({'error': 'Email, senha, and confirmar senha são obrigatórios!'}), 400
+        if not user_name or not email or not password or not confirm_password:
+            return jsonify({'error': 'Nome de usuário, email, senha, and confirmar senha são obrigatórios!'}), 400
 
         if password != confirm_password:
             return jsonify({'error': 'As senhas não são iguais!'}), 400
         
-        existing_user = exec_query("SELECT * FROM users WHERE email = %s", (email,))
-
+        existing_user = exec_query("SELECT * FROM users WHERE user_name = %s or email = %s", (user_name, email,))
 
         if existing_user:
             return jsonify({'error': 'Um usuário com esse e-mail já existe!'}), 409
         
         send_mail('welcome',email)
-        commit("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
+        commit("INSERT INTO users (user_name, email, password) VALUES (%s, %s, %s)", (user_name, email, password))
 
         return jsonify({'message': 'Usuário criado com sucesso!'}), 200
     except Exception as e:
+        logger.debug(e)
         return jsonify({'error': str(e)}), 500
 
 # Rota para alterar a senha
@@ -211,11 +212,11 @@ def get_text():
         altura = safe_extract_numeric(r'Altura:\s*(\d+(\.\d+)?)', report)
         glicemia = safe_extract_numeric(r'Glicemia:\s*(\d+(\.\d+)?)', report)
         insert_query = """
-        INSERT INTO medical_exams (pressao, peso, altura, glicemia, user_email)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO medical_exams (pressao, peso, altura, glicemia, report, user_email)
+        VALUES (%s, %s, %s, %s, %s, %s)
         """
         
-        commit(insert_query, (pressao, peso, altura, glicemia, email))
+        commit(insert_query, (pressao, peso, altura, glicemia, report, email))
 
         return jsonify({'message':  report}), 200
     except Exception as e:

@@ -49,6 +49,6 @@ def send_mail(type,receiver_email,code = None):
         logger.info("Email sent!")
     except Exception as e:
         logger.error("Failed to send email: %s", e)
-        raise
+        return True
     finally:
         server.quit()
