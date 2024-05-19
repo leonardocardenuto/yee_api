@@ -165,6 +165,25 @@ def check_code():
         return jsonify({'message':  'Código verificado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Rota para atualizar avatar
+@bp.route('/upload_avatar', methods=['POST'])
+def upload_avatar():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+
+    try:
+        data = request.get_json()
+        user_name = data.get('user_name')
+        avatar = data.get('avatar')
+
+        commit("UPDATE users SET avatar = %s WHERE user_name = %s", (avatar,user_name,))
+
+        return jsonify({'message':  'Avatar atualizado com sucesso!'}), 200
+    except Exception as e:
+        logger.debug(e)
+        return jsonify({'error': str(e)}), 500
     
 #================================================
 #
@@ -228,22 +247,14 @@ def get_text():
 def ask_ai():
     try:
         data = request.get_json()
-        email = data.get('email')
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+
         question = data.get('question')
-        
-        if not email:
-            return jsonify({'error': 'Email é obrigatório!'}), 400
-
-        email = exec_query("SELECT * FROM users WHERE email = %s", (email))
-
-        if not email:
-            return jsonify({'error': 'Permissão negada!!'}), 400
         
         if not question:
             return jsonify({'error': 'A pergunta é obrigatória!'}), 400
 
-        latitude = -23.647778
-        longitude = -46.573333
         response = ask_gemini([f"Com base na necessidade do usuário : {question}; Peço que identifique o tipo de localidade procurada dentre os da lista abaixo:'hospital','pharmacy','None'. Informe somente o tipo escolhido."])
         logger.debug(response)
         type = response
