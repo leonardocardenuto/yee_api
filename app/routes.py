@@ -65,7 +65,9 @@ def create_user():
     try:
         data = request.get_json()
         user_name = data.get('user_name')
+        user_name = user_name.lower()
         email = data.get('email')
+        email = email.lower()
         password = data.get('password')
         confirm_password = data.get('confirm_password')
 
@@ -81,7 +83,7 @@ def create_user():
             return jsonify({'error': 'Um usuário com esse e-mail já existe!'}), 409
         
         send_mail('welcome',email)
-        commit("INSERT INTO users (user_name, email, password) VALUES (%s, %s, %s)", (user_name, email, password))
+        commit("INSERT INTO users (user_name, email, password) VALUES (%s, %s, %s)", ( user_name, email, password))
 
         return jsonify({'message': 'Usuário criado com sucesso!'}), 200
     except Exception as e:
