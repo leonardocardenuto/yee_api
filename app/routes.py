@@ -14,13 +14,14 @@ from app.utils.ai import identify_image , ask_gemini
 
 bp = Blueprint('routes', __name__)
 
-def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=10000):
+def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=600):
     base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
     params = {
         'key': api_key,
         'location': f'{latitude},{longitude}',
         'radius': radius,
-        'type': type
+        'type': type,
+        'rank_by':'distance'
     }
     response = requests.get(base_url, params=params)
     if response.status_code == 200:
@@ -249,30 +250,27 @@ def ask_ai():
         data = request.get_json()
         latitude = data.get('latitude')
         longitude = data.get('longitude')
-
         question = data.get('question')
         
         if not question:
             return jsonify({'error': 'A pergunta é obrigatória!'}), 400
 
-        response = ask_gemini([f"Com base na necessidade do usuário : {question}; Peço que identifique o tipo de localidade procurada dentre os da lista abaixo:'hospital','pharmacy','None'. Informe somente o tipo escolhido."])
+        response = ask_gemini(f"Com base na necessidade do usuário : {question}; Peço que identifique o tipo de localidade procurada dentre os da lista abaixo:'hospital','pharmacy','None'. Informe somente o tipo escolhido.")
         logger.debug(response)
         type = response
         type = type.strip()
         results = search_nearby_hospitals(type ,api_key_maps, latitude, longitude)
+        result_string = ''
         if results:
-            result_string = ""
+            result_string += f"Segue a lista dos 5 estabelecimentos mais próximos de você em um raio de (600 metros):"
             for item in results['results']:
                 name = item['name']
                 address = item['vicinity']
                 rating = item.get('rating', 'N/A')
                 type = ', '.join(item['types'])
-                result_string += f"\nName: {name}"
-                result_string += f"\nAddress: {address}"
-                result_string += f"\nRating: {rating}"
-                result_string += f"Types: {type}"
-                result_string += f"\nLatitude: {latitude}, Longitude: {longitude}"
-        
+                result_string += f"\n\nNome: {name}\n"
+                result_string += f"Endereço: {address}\n"
+                result_string += f"Avaliação: {rating} estrelas\n"
             return jsonify({'message':  result_string}), 200
         else:
             return jsonify({'message':  "Um erro ao vasculhar locais ocorreu!"}), 500
