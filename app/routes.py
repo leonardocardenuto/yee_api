@@ -262,7 +262,7 @@ def ask_ai():
         results = search_nearby_hospitals(type ,api_key_maps, latitude, longitude)
         result_string = ''
         if results:
-            result_string += f"Segue a lista dos 5 estabelecimentos mais próximos de você em um raio de (600 metros):"
+            result_string += f"Segue a lista dos estabelecimentos mais próximos de você em um raio de (600 metros):"
             for item in results['results']:
                 name = item['name']
                 address = item['vicinity']
