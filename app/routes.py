@@ -188,6 +188,33 @@ def upload_avatar():
         logger.debug(e)
         return jsonify({'error': str(e)}), 500
     
+# Rota para pegar exames
+@bp.route('/get_exams', methods=['POST'])
+def get_exams():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+    try:
+        data = request.get_json()
+        email = data.get('email')
+
+        exams = exec_query(f"SELECT peso, altura, pressao, glicemia FROM medical_exams WHERE user_email = '{email}'")
+        
+        if exams:
+            for exam in exams:    
+                peso, altura, pressao, glicemia = exam
+            return jsonify({
+                'peso': peso,
+                'altura': altura,
+                'pressao': pressao,
+                'glicemia': glicemia
+            })
+
+        return jsonify({'message': 'No data found for the given ID'}), 404
+
+    except Exception as e:
+        logger.debug(e)
+        return jsonify({'error': str(e)}), 500
 #================================================
 #
 #   ATENÇÃO ESSA ROTA SÓ FUNCIONA EM LOCALHOST!
