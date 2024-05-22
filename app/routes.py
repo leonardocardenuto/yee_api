@@ -196,13 +196,14 @@ def get_exams():
     logger.debug("Request data: %s", request.get_data())
     try:
         data = request.get_json()
-        email = data.get('email')
+        user_name = data.get('user_name')
 
-        exams = exec_query(f"SELECT peso, altura, pressao, glicemia FROM medical_exams WHERE user_email = '{email}'")
+        exams = exec_query(f"SELECT peso, altura, pressao, glicemia FROM medical_exams WHERE user_name = '{user_name}'")
         
         if exams:
             for exam in exams:    
                 peso, altura, pressao, glicemia = exam
+                logger.debug(f"Exam data - Peso: {peso}, Altura: {altura}, Pressao: {pressao}, Glicemia: {glicemia}")
             return jsonify({
                 'peso': peso,
                 'altura': altura,
