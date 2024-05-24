@@ -21,7 +21,7 @@ def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=600):
         'location': f'{latitude},{longitude}',
         'radius': radius,
         'type': type,
-        'rank_by':'distance'
+        'rank_by':'distancesxxsax'
     }
     response = requests.get(base_url, params=params)
     if response.status_code == 200:
