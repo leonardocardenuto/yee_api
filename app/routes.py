@@ -198,17 +198,18 @@ def get_exams():
         data = request.get_json()
         user_name = data.get('user_name')
 
-        exams = exec_query(f"SELECT peso, altura, pressao, glicemia FROM medical_exams WHERE user_name = '{user_name}'")
+        exams = exec_query(f"SELECT peso, altura, pressao, glicemia, imc FROM medical_exams WHERE user_name = '{user_name}'")
         
         if exams:
             for exam in exams:    
-                peso, altura, pressao, glicemia = exam
-                logger.debug(f"Exam data - Peso: {peso}, Altura: {altura}, Pressao: {pressao}, Glicemia: {glicemia}")
+                peso, altura, pressao, glicemia, imc = exam
+                logger.debug(f"Exam data - Peso: {peso}, Altura: {altura}, Pressao: {pressao}, Glicemia: {glicemia}, Imc: {imc}")
             return jsonify({
                 'peso': peso,
                 'altura': altura,
                 'pressao': pressao,
-                'glicemia': glicemia
+                'glicemia': glicemia,
+                'imc': imc
             })
 
         return jsonify({'message': 'No data found for the given ID'}), 404
@@ -227,13 +228,13 @@ def get_exams():
 def get_text():
     try:
         data = request.get_json()
-        email = data.get('email')
+        user_name = data.get('user_name')
         image_data = data.get('image_b64')
         
-        if not email:
-            return jsonify({'error': 'Email é obrigatório!'}), 400
+        if not user_name:
+            return jsonify({'error': 'user_name é obrigatório!'}), 400
 
-        email_found = exec_query("SELECT * FROM users WHERE email = %s", (email,))
+        email_found = exec_query("SELECT email FROM users WHERE user_name = %s", (user_name,))
 
         if not email_found:
             return jsonify({'error': 'Permissão negada!!'}), 400
@@ -262,11 +263,11 @@ def get_text():
         altura = safe_extract_numeric(r'Altura:\s*(\d+(\.\d+)?)', report)
         glicemia = safe_extract_numeric(r'Glicemia:\s*(\d+(\.\d+)?)', report)
         insert_query = """
-        INSERT INTO medical_exams (pressao, peso, altura, glicemia, report, user_email)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO medical_exams (pressao, peso, altura, glicemia, report, user_email, user_name)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         
-        commit(insert_query, (pressao, peso, altura, glicemia, report, email))
+        commit(insert_query, (pressao, peso, altura, glicemia, report, email_found[0] , user_name))
 
         return jsonify({'message':  report}), 200
     except Exception as e:
