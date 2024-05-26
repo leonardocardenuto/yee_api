@@ -75,7 +75,7 @@ def create_user():
             return jsonify({'error': 'Nome de usuário, email, senha, and confirmar senha são obrigatórios!'}), 400
 
         if password != confirm_password:
-            return jsonify({'error': 'As senhas não são iguais!'}), 400
+            return jsonify({'error': 'As senhas não são iguais!'}), 401
         
         existing_user = exec_query("SELECT * FROM users WHERE user_name = %s or email = %s", (user_name, email,))
 
