@@ -6,6 +6,7 @@ import base64
 from PIL import Image
 from io import BytesIO
 import re
+from datetime import datetime
 from app.config import logger, api_key_maps
 from app.utils.db import auth, exec_query,commit
 from app.utils.mail import send_mail
@@ -217,6 +218,60 @@ def get_exams():
     except Exception as e:
         logger.debug(e)
         return jsonify({'error': str(e)}), 500
+    
+# Rota para montar histórico
+@bp.route('/get_previous_exams', methods=['POST'])
+def get_previous_exams():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+    try:
+        data = request.get_json()
+        user_name = data.get('user_name')
+        user_email = data.get('email')
+
+        filter = (data.get('filtro')).lower()
+
+        if not user_name and not user_email:
+            return "Email ou nome de usário são obrigatórios",400
+        if not filter:
+            return "É necessárioinformar um filtro",400
+        
+        translate_filter_db = {
+            "pressão": "pressao"
+        }
+
+        translated_filter = translate_filter_db.get(filter, filter)
+        state_field = f"{translated_filter}_state"
+
+        query = f"""
+            SELECT 
+                created_on AS Data, 
+                {translated_filter} AS Valores, 
+                {state_field} AS Estado 
+            FROM 
+                medical_exams 
+            WHERE 
+                user_name = %s OR user_email = %s
+        """
+        exams = exec_query(query, (user_name, user_email,))
+
+        # Cria uma array de dicionários
+        result = [
+            {
+                'Data': exam[0].strftime("%d/%m/%Y"),
+                'Valores': exam[1], 
+                'Estado': exam[2]
+            }
+
+        for exam in exams]
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.debug(e)
+        return jsonify({'error': str(e)}), 500
+
 #================================================
 #
 #   ATENÇÃO ESSA ROTA SÓ FUNCIONA EM LOCALHOST!
