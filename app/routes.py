@@ -1,37 +1,22 @@
+# Py modules imports
 from flask import Blueprint, jsonify, request
 import requests
 import random
-import PIL.Image
-import base64
-from PIL import Image
-from io import BytesIO
 import re
+
+
+# Utils imports
 from datetime import datetime
 from app.config import logger, api_key_maps
 from app.utils.db import auth, exec_query,commit
 from app.utils.mail import send_mail
 from app.utils.ai import identify_image , ask_gemini
+from app.utils.images_handler import restore_image
 
 
 bp = Blueprint('routes', __name__)
 
-def search_nearby_hospitals(type ,api_key, latitude, longitude, radius=600):
-    base_url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-    params = {
-        'key': api_key,
-        'location': f'{latitude},{longitude}',
-        'radius': radius,
-        'type': type,
-        'rank_by':'distance'
-    }
-    response = requests.get(base_url, params=params)
-    if response.status_code == 200:
-        data = response.json()
-        return data
-    else:
-        print('Failed to retrieve data:', 500)
-        return False
-    
+
 # Rota para logar
 @bp.route('/login', methods=['POST'])
 def login():
@@ -272,11 +257,6 @@ def get_previous_exams():
         logger.debug(e)
         return jsonify({'error': str(e)}), 500
 
-#================================================
-#
-#   ATENÇÃO ESSA ROTA SÓ FUNCIONA EM LOCALHOST!
-#
-#================================================
 
 # Rota ler imagem
 @bp.route('/get_text', methods=['POST'])
@@ -297,13 +277,8 @@ def get_text():
         if not image_data:
             return jsonify({'error': 'A imagem é obrigatória!'}), 400
 
-        image_data = base64.b64decode(image_data)
-        decoded_image = Image.open(BytesIO(image_data))
-        decoded_image.save("./images/decoded_image.jpg")
 
-        img = PIL.Image.open('./images/decoded_image.jpg')
-
-        report = identify_image(img)
+        report = identify_image(restore_image(image_data))
 
         def safe_extract_numeric(pattern, string):
             match = re.search(pattern, string)
@@ -337,29 +312,13 @@ def ask_ai():
         latitude = data.get('latitude')
         longitude = data.get('longitude')
         question = data.get('question')
-        
+        user_name = data.get('user_name')
+
         if not question:
             return jsonify({'error': 'A pergunta é obrigatória!'}), 400
 
-        response = ask_gemini(f"Com base na necessidade do usuário : {question}; Peço que identifique o tipo de localidade procurada dentre os da lista abaixo:'hospital','pharmacy','None'. Informe somente o tipo escolhido.")
-        logger.debug(response)
-        type = response
-        type = type.strip()
-        results = search_nearby_hospitals(type ,api_key_maps, latitude, longitude)
-        result_string = ''
-        if results:
-            result_string += f"Segue a lista dos estabelecimentos mais próximos de você em um raio de (600 metros):"
-            for item in results['results']:
-                name = item['name']
-                address = item['vicinity']
-                rating = item.get('rating', 'N/A')
-                type = ', '.join(item['types'])
-                result_string += f"\n\nNome: {name}\n"
-                result_string += f"Endereço: {address}\n"
-                result_string += f"Avaliação: {rating} estrelas\n"
-            return jsonify({'message':  result_string}), 200
-        else:
-            return jsonify({'message':  "Um erro ao vasculhar locais ocorreu!"}), 500
+        response = ask_gemini(f"{question}", latitude, longitude, user_name)
+        return jsonify({'message':  response}), 200
     except Exception as e:
         logger.debug(e)
         return jsonify({'error': str(e)}), 500
