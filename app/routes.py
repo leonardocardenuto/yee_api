@@ -1,13 +1,11 @@
 # Py modules imports
 from flask import Blueprint, jsonify, request
-import requests
 import random
 import re
 
 
 # Utils imports
-from datetime import datetime
-from app.config import logger, api_key_maps
+from app.config import logger
 from app.utils.db import auth, exec_query,commit
 from app.utils.mail import send_mail
 from app.utils.ai import identify_image , ask_gemini
