@@ -59,7 +59,7 @@ def create_user():
             return jsonify({'error': 'Nome de usuário, email, senha, and confirmar senha são obrigatórios!'}), 400
 
         if password != confirm_password:
-            return jsonify({'error': 'As senhas não são iguais!'}), 400
+            return jsonify({'error': 'As senhas não são iguais!'}), 401
         
         existing_user = exec_query("SELECT * FROM users WHERE user_name = %s or email = %s", (user_name, email,))
 
@@ -182,18 +182,21 @@ def get_exams():
         data = request.get_json()
         user_name = data.get('user_name')
 
-        exams = exec_query(f"SELECT peso, altura, pressao, glicemia, imc FROM medical_exams WHERE user_name = '{user_name}'")
+        exams = exec_query(f"SELECT peso, altura, pressao, glicemia, imc, pressao_state, glicemia_state, imc_state FROM medical_exams WHERE user_name = '{user_name}'")
         
         if exams:
             for exam in exams:    
-                peso, altura, pressao, glicemia, imc = exam
-                logger.debug(f"Exam data - Peso: {peso}, Altura: {altura}, Pressao: {pressao}, Glicemia: {glicemia}, Imc: {imc}")
+                peso, altura, pressao, glicemia, imc, pressao_state, glicemia_state, imc_state = exam
+                logger.debug(f"Exam data - Peso: {peso}, Altura: {altura}, Pressao: {pressao}, Glicemia: {glicemia}, Imc: {imc}, Pressao_State : {pressao_state}, Glicemia_State : {glicemia_state}, IMC_state : {imc_state} ")
             return jsonify({
                 'peso': peso,
                 'altura': altura,
                 'pressao': pressao,
                 'glicemia': glicemia,
-                'imc': imc
+                'imc': imc,
+                'pressao_state' : pressao_state,
+                'glicemia_state' : glicemia_state,
+                'imc_state' : imc_state
             })
 
         return jsonify({'message': 'No data found for the given ID'}), 404
