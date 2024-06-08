@@ -39,6 +39,14 @@ def commit(query, params=None):
     except Exception as e:
         raise e
 
+def fetch_schema():
+    return exec_query("""SELECT table_catalog, 
+        table_schema,table_name,
+        column_name,ordinal_position,
+        column_default,is_nullable,
+        data_type FROM information_schema.columns
+        WHERE table_name = 'medical_exams';""")
+        
 def auth(email, password):
     """
     Retrieves a user by email and password.
