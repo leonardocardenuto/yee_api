@@ -2,7 +2,7 @@
 from flask import Blueprint, jsonify, request
 import random
 import re
-
+from datetime import time
 
 # Utils imports
 from app.config import logger
@@ -74,6 +74,68 @@ def create_user():
         logger.debug(e)
         return jsonify({'error': str(e)}), 500
 
+@bp.route('/alarms', methods=['POST'])
+def create_alarm():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+
+    try:
+        data = request.get_json()
+        description = data.get('description')
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+        time_of_day = data.get('timeOfDay')
+        interval_in_hours = data.get('intervalInHours')
+        user_name = data.get('user_name')
+        type = data.get('type')
+        alarm_id = data.get('alarmId')
+
+        if not all([description, start_date, end_date, time_of_day, interval_in_hours, user_name, type, alarm_id]):
+            return jsonify({'error': 'Todos os campos são obrigatórios!'}), 400
+
+        start_date = start_date
+        end_date = end_date
+
+        commit("INSERT INTO alarms (description, startDate, endDate, hour, interval_hours, user_name, type, alarm_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
+               (description, start_date, end_date, time_of_day, interval_in_hours, user_name, type, alarm_id))
+        
+        return jsonify({'message': 'Alarme criado com sucesso!'}), 200
+    except Exception as e:
+        logger.debug(e)
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/get_alarms', methods=['POST'])
+def get_alarm():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+
+    try:
+        alarm_id = request.json.get('alarm_id')
+        alarm_id = str(alarm_id)
+        if not alarm_id:
+            return jsonify({'error': 'Todos os campos são obrigatórios!'}), 400
+
+        medication_info = exec_query("SELECT * FROM alarms WHERE alarm_id = %s", (alarm_id,))
+
+        if not medication_info:
+            return jsonify({'error': 'Alarm not found'}), 404
+
+        row = medication_info[0]
+        alarm_data = {
+            'id': row[0],
+            'description': row[1],
+            'startDate': row[4].isoformat(),
+            'endDate': row[5].isoformat(),
+        }
+
+        return jsonify(alarm_data), 200
+
+    except Exception as e:
+        logger.error("Error processing request", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+    
 # Rota para alterar a senha
 @bp.route('/change_pass', methods=['POST'])
 def change_pass():
@@ -305,7 +367,7 @@ def get_text():
         logger.debug(e)
         return jsonify({'error': str(e)}), 500
     
-# Rota check mais próxima
+# Rota falar com AI
 @bp.route('/ask_ai', methods=['POST'])
 def ask_ai():
     try:
