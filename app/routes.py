@@ -340,6 +340,7 @@ def ask_ai():
 
 #Rota para inserir no Google Calendar
 SCOPES = ['https://www.googleapis.com/auth/calendar']
+
 @bp.route('/insert_medication', methods=['POST'])
 def insert_medication():
     creds = None
@@ -347,12 +348,11 @@ def insert_medication():
     data = request.get_json()
     medication = data.get('medication')
     summary = f"Tomar {medication}"
-    interval_hours = int(data.get('interval'))  # Intervalo em horas entre as doses
+    interval_hours = int(data.get('interval'))
     as_from = datetime.strptime(data.get('as_from'), '%m/%d/%y %H:%M:%S')
     to = datetime.strptime(data.get('to'), '%m/%d/%y %H:%M:%S')
     user_name = data.get('user_name')
     
-
     # O arquivo token.pickle armazena os tokens de acesso e atualização do usuário
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
@@ -367,10 +367,6 @@ def insert_medication():
             pickle.dump(creds, token)
 
     service = build('calendar', 'v3', credentials=creds)
-
-    # Calcula o número total de dias entre as datas de início e fim
-    total_days = (to - as_from).days
-
 
     # Cria eventos para cada dose dentro do período especificado
     current_time = as_from
@@ -387,9 +383,6 @@ def insert_medication():
                 'dateTime': (current_time + timedelta(minutes=30)).isoformat(),  # Duração de 30 minutos
                 'timeZone': 'America/Sao_Paulo',
             },
-            'recurrence': [
-                f'RRULE:FREQ=DAILY;COUNT={total_days}'
-            ],
             'reminders': {
                 'useDefault': False,
                 'overrides': [
@@ -402,17 +395,16 @@ def insert_medication():
         # Adiciona o evento ao calendário
         service.events().insert(calendarId='primary', body=event).execute()
         
-
         # Incrementa o tempo atual pelo intervalo de horas
         current_time += timedelta(hours=interval_hours)
         
     commit("""
-           INSERT INTO medications (medication, user_name, startdate, enddate, interval_hours)
-           VALUES (%s, %s, %s, %s, %s)
-           """, 
-           (medication, user_name, as_from, to, interval_hours)
-           )
-
+        INSERT INTO medications (medication, user_name, startdate, enddate, interval_hours)
+        VALUES (%s, %s, %s, %s, %s)
+        """, 
+        (medication, user_name, as_from, to, interval_hours)
+        )
+        
     return jsonify({"status": "success"}), 200
 
 # Rota para pegar medicamentos
