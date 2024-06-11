@@ -419,19 +419,18 @@ def get_medication():
 
         medications = exec_query(f"SELECT medication, startdate, enddate, interval_hours FROM medications WHERE user_name = '{user_name}' ORDER BY enddate ASC")
         
-        if medications:
-            for medicine in medications:    
-                medication, startdate, enddate, interval_hours = medicine
-                logger.debug(f"Exam data - Remedio: {medication}, Inicio: {startdate}, Fim: {enddate}, Intervalo: {interval_hours}")
-            return jsonify({
-                'medication': medication,
-                'startdate': startdate,
-                'enddate': enddate,
-                'interval_hours': interval_hours,
-            })
+        result = [
+        {
+            'medicacao': medication[0],
+            'inicio': medication[1], 
+            'fim': medication[2],
+            'invervalo':medication[3]
+        }
+        for medication in medications]
 
-        return jsonify({'message': 'No data found for the given ID'}), 404
+        return jsonify(result), 200
 
     except Exception as e:
         logger.debug(e)
         return jsonify({'error': str(e)}), 500
+        
