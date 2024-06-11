@@ -11,6 +11,12 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from datetime import datetime, timedelta
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+import pickle
+import os
 
 # Utils imports
 from app.config import logger
@@ -334,74 +340,77 @@ def ask_ai():
 
 #Rota para inserir no Google Calendar
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-
 @bp.route('/insert_medication', methods=['POST'])
 def insert_medication():
     creds = None
-    
+
     data = request.get_json()
     medication = data.get('medication')
-    as_from = data.get('as_from')
-    to = data.get('to')
-    interval = data.get('interval')
-    
-    # ocorrency = 24/int(interval)
-    as_from = datetime.strptime(as_from, '%m/%d/%y %H:%M:%S')
-    to = datetime.strptime(to, '%m/%d/%y %H:%M:%S')
+    summary = f"Tomar {medication}"
+    interval_hours = int(data.get('interval'))  # Intervalo em horas entre as doses
+    as_from = datetime.strptime(data.get('as_from'), '%m/%d/%y %H:%M:%S')
+    to = datetime.strptime(data.get('to'), '%m/%d/%y %H:%M:%S')
+    user_name = data.get('user_name')
     
 
-    # The file token.pickle stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
+    # O arquivo token.pickle armazena os tokens de acesso e atualização do usuário
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
-    # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)  # Use port=0 to let the OS choose an available port
-        # Save the credentials for the next run
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
 
     service = build('calendar', 'v3', credentials=creds)
 
-    # Define the event details
-    event = {
-      'summary': medication,
-      'location': '',
-      'description': '',
-      'start': {
-        'dateTime': as_from.isoformat(),
-        'timeZone': 'America/Los_Angeles',
-      },
-      'end': {
-        'dateTime': to.isoformat(),
-        'timeZone': 'America/Los_Angeles',
-      },
-      'recurrence': [
-        'RRULE:FREQ=DAILY;COUNT=2'
-      ],
-      'attendees': [
-        {'email': 'test@example.com'},
-      ],
-      'reminders': {
-        'useDefault': False,
-        'overrides': [
-          {'method': 'email', 'minutes': 24 * 60},
-          {'method': 'popup', 'minutes': 10},
-        ],
-      },
-    }
+    # Calcula o número total de dias entre as datas de início e fim
+    total_days = (to - as_from).days
 
-                        
-    try:
-        # Insert the event into the calendar
-        event = service.events().insert(calendarId='primary', body=event).execute()
-        return jsonify({'message': f'Event created: {event.get("htmlLink")}'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
+    # Cria eventos para cada dose dentro do período especificado
+    current_time = as_from
+    while current_time <= to:
+        event = {
+            'summary': summary,
+            'location': '',
+            'description': '',
+            'start': {
+                'dateTime': current_time.isoformat(),
+                'timeZone': 'America/Sao_Paulo',
+            },
+            'end': {
+                'dateTime': (current_time + timedelta(minutes=30)).isoformat(),  # Duração de 30 minutos
+                'timeZone': 'America/Sao_Paulo',
+            },
+            'recurrence': [
+                f'RRULE:FREQ=DAILY;COUNT={total_days}'
+            ],
+            'reminders': {
+                'useDefault': False,
+                'overrides': [
+                    {'method': 'email', 'minutes': 24 * 60},
+                    {'method': 'popup', 'minutes': 5},
+                ],
+            },
+        }
+
+        # Adiciona o evento ao calendário
+        service.events().insert(calendarId='primary', body=event).execute()
+        
+
+        # Incrementa o tempo atual pelo intervalo de horas
+        current_time += timedelta(hours=interval_hours)
+        
+    commit("""
+           INSERT INTO medications (medication, user_name, startdate, enddate, interval_hours)
+           VALUES (%s, %s, %s, %s, %s)
+           """, 
+           (medication, user_name, as_from, to, interval_hours)
+           )
+
+    return jsonify({"status": "success"}), 200
