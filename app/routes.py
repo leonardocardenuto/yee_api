@@ -424,7 +424,7 @@ def get_medication():
             'medicacao': medication[0],
             'inicio': medication[1], 
             'fim': medication[2],
-            'invervalo':medication[3]
+            'intervalo':str(medication[3])
         }
         for medication in medications]
 
