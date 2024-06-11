@@ -414,3 +414,32 @@ def insert_medication():
            )
 
     return jsonify({"status": "success"}), 200
+
+# Rota para pegar medicamentos
+@bp.route('/get_medication', methods=['POST'])
+def get_medication():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+    try:
+        data = request.get_json()
+        user_name = data.get('user_name')
+
+        medications = exec_query(f"SELECT medication, startdate, enddate, interval_hours FROM medications WHERE user_name = '{user_name}' ORDER BY enddate ASC")
+        
+        if medications:
+            for medicine in medications:    
+                medication, startdate, enddate, interval_hours = medicine
+                logger.debug(f"Exam data - Remedio: {medication}, Inicio: {startdate}, Fim: {enddate}, Intervalo: {interval_hours}")
+            return jsonify({
+                'medication': medication,
+                'startdate': startdate,
+                'enddate': enddate,
+                'interval_hours': interval_hours,
+            })
+
+        return jsonify({'message': 'No data found for the given ID'}), 404
+
+    except Exception as e:
+        logger.debug(e)
+        return jsonify({'error': str(e)}), 500
