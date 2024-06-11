@@ -323,3 +323,77 @@ def ask_ai():
     except Exception as e:
         logger.debug(e)
         return jsonify({'error': str(e)}), 500
+
+# #Rota para inserir no Google Calendar
+# SCOPES = ['https://www.googleapis.com/auth/calendar']
+
+# @bp.route('/insert_medication', methods=['POST'])
+# def insert_medication():
+#     creds = None
+    
+#     data = request.get_json()
+#     medication = data.get('medication')
+#     as_from = data.get('as_from')
+#     to = data.get('to')
+#     interval = data.get('interval')
+    
+#     # ocorrency = 24/int(interval)
+#     as_from = datetime.strptime(as_from, '%m/%d/%y %H:%M:%S')
+#     to = datetime.strptime(to, '%m/%d/%y %H:%M:%S')
+    
+
+#     # The file token.pickle stores the user's access and refresh tokens, and is
+#     # created automatically when the authorization flow completes for the first
+#     # time.
+#     if os.path.exists('token.pickle'):
+#         with open('token.pickle', 'rb') as token:
+#             creds = pickle.load(token)
+#     # If there are no (valid) credentials available, let the user log in.
+#     if not creds or not creds.valid:
+#         if creds and creds.expired and creds.refresh_token:
+#             creds.refresh(Request())
+#         else:
+#             flow = InstalledAppFlow.from_client_secrets_file(
+#                 'credentials.json', SCOPES)
+#             creds = flow.run_local_server(port=0)  # Use port=0 to let the OS choose an available port
+#         # Save the credentials for the next run
+#         with open('token.pickle', 'wb') as token:
+#             pickle.dump(creds, token)
+
+#     service = build('calendar', 'v3', credentials=creds)
+
+#     # Define the event details
+#     event = {
+#       'summary': medication,
+#       'location': '',
+#       'description': '',
+#       'start': {
+#         'dateTime': as_from.isoformat(),
+#         'timeZone': 'America/Los_Angeles',
+#       },
+#       'end': {
+#         'dateTime': to.isoformat(),
+#         'timeZone': 'America/Los_Angeles',
+#       },
+#       'recurrence': [
+#         'RRULE:FREQ=DAILY;COUNT={}'
+#       ],
+#       'attendees': [
+#         {'email': 'test@example.com'},
+#       ],
+#       'reminders': {
+#         'useDefault': False,
+#         'overrides': [
+#           {'method': 'email', 'minutes': 24 * 60},
+#           {'method': 'popup', 'minutes': 10},
+#         ],
+#       },
+#     }
+
+
+#     try:
+#         # Insert the event into the calendar
+#         event = service.events().insert(calendarId='primary', body=event).execute()
+#         return jsonify({'message': f'Event created: {event.get("htmlLink")}'}), 200
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
