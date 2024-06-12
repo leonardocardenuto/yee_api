@@ -512,8 +512,8 @@ def get_appointment():
         {
             'adress': appointment[0],
             'type': appointment[1], 
-            'date': appointment[2],
-            'hour':str(appointment[3])
+            'date': datetime.strptime(appointment[2], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d'),
+            'hour': datetime.strptime(appointment[3], '%Y-%m-%d %H:%M:%S').strftime('%H:%M:%S')
         }
         for appointment in appointments]
 
