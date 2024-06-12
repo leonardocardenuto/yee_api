@@ -433,4 +433,93 @@ def get_medication():
     except Exception as e:
         logger.debug(e)
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/insert_appointments', methods=['POST'])
+def insert_appointments():
+    creds = None
+
+    data = request.get_json()
+    adress = data.get('adress')
+    type = data.get('type')
+    summary = f"Hora da consulta {type}"
+    as_from = datetime.strptime(data.get('as_from'), '%m/%d/%y %H:%M:%S')
+    hour = datetime.strptime(data.get('hour'), '%m/%d/%y %H:%M:%S')
+    combined_datetime = datetime.combine(as_from.date(), hour.time())
+    user_name = data.get('user_name')
+    
+    # O arquivo token.pickle armazena os tokens de acesso e atualização do usuário
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+
+    service = build('calendar', 'v3', credentials=creds)
+
+    # Cria eventos para cada dose dentro do período especificado
+    event = {
+        'summary': summary,
+        'location': '',
+        'description': '',
+        'start': {
+            'dateTime': combined_datetime.isoformat(),
+            'timeZone': 'America/Sao_Paulo',
+        },
+        'end': {
+            'dateTime': (combined_datetime + timedelta(hours=1)).isoformat(),  # Duração de 1 hora
+            'timeZone': 'America/Sao_Paulo',
+        },
+        'reminders': {
+            'useDefault': False,
+            'overrides': [
+                {'method': 'email', 'minutes': 24 * 60},
+                {'method': 'popup', 'minutes': 5},
+            ],
+        },
+    }
+
+    # Adiciona o evento ao calendário
+    service.events().insert(calendarId='primary', body=event).execute()
         
+    commit("""
+        INSERT INTO appointments (adress, type, user_name, date, hour)
+        VALUES (%s, %s, %s, %s, %s)
+        """, 
+        (adress, type, user_name, as_from, hour)
+        )
+        
+    return jsonify({"status": "success"}), 200
+
+# Rota para pegar medicamentos
+@bp.route('/get_appointment', methods=['POST'])
+def get_appointment():
+    logger.info("Received request: %s %s", request.method, request.url)
+    logger.debug("Request headers: %s", request.headers)
+    logger.debug("Request data: %s", request.get_data())
+    try:
+        data = request.get_json()
+        user_name = data.get('user_name')
+
+        appointments = exec_query(f"SELECT adress, type, date, hour FROM appointments WHERE user_name = '{user_name}' ORDER BY date ASC")
+        
+        result = [
+        {
+            'adress': appointment[0],
+            'type': appointment[1], 
+            'date': appointment[2],
+            'hour':str(appointment[3])
+        }
+        for appointment in appointments]
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.debug(e)
+        return jsonify({'error': str(e)}), 500
+    
